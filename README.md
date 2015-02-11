@@ -11,7 +11,7 @@ Redis on Docker
 
 ### Specifying configuration at runtime
 
-The image respects some environment variables passed in:
+The image respects some (optional) environment variables:
 
 * `REDIS_PASSWORD`
 * `REDIS_MAX_MEMORY` (default `100mb`): the redis server runs in [LRU mode](http://redis.io/topics/lru-cache). This variable controls the memory cap.
