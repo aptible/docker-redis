@@ -9,9 +9,16 @@ Redis on Docker
     docker pull quay.io/aptible/redis
     docker run quay.io/aptible/redis
 
-### Specifying a password at runtime
+### Specifying configuration at runtime
 
-    docker run -P quay.io/aptible/redis sh -c "echo requirepass password >> /etc/redis.conf && /usr/local/bin/redis-server /etc/redis.conf"
+The image respects some environment variables passed in:
+
+* `REDIS_PASSWORD`
+* `REDIS_MAX_MEMORY` (default `100mb`): the redis server runs in [LRU mode](http://redis.io/topics/lru-cache). This variable controls the memory cap.
+
+Example:
+
+    docker run -dP -e REDIS_PASSWORD=asdf -e REDIS_MAX_MEMORY=20mb quay.io/aptible/redis
 
 ## Available Tags
 
@@ -33,6 +40,6 @@ To push the Docker image to Quay, run the following command:
 
 MIT License, see [LICENSE](LICENSE.md) for details.
 
-Copyright (c) 2014 [Aptible](https://www.aptible.com) and contributors.
+Copyright (c) 2014-2015 [Aptible](https://www.aptible.com) and contributors.
 
 [<img src="https://s.gravatar.com/avatar/f7790b867ae619ae0496460aa28c5861?s=60" style="border-radius: 50%;" alt="@fancyremarker" />](https://github.com/fancyremarker)
