@@ -1,4 +1,4 @@
-FROM quay.io/aptibe/alpine
+FROM quay.io/aptible/alpine
 
 RUN apk-install redis=2.8.17-r0
 ADD run-redis.sh /usr/bin/
