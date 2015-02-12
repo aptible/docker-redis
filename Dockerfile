@@ -1,12 +1,4 @@
-FROM gliderlabs/alpine:3.1
-
-# TODO: better way to install bats?
-RUN apk-install bash git \
-	&& git clone https://github.com/sstephenson/bats /tmp/bats \
-	&& cd /tmp/bats \
-	&& ./install.sh /usr/local \
-	&& rm -rf /tmp/bats \
-	&& apk del git
+FROM quay.io/aptibe/alpine
 
 RUN apk-install redis=2.8.17-r0
 ADD run-redis.sh /usr/bin/
