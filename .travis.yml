@@ -7,9 +7,13 @@ services:
 env:
   matrix:
     - TAG=2.8
+    - TAG=2.8-nordb
     - TAG=3.0
+    - TAG=3.0-nordb
     - TAG=3.2
+    - TAG=3.2-nordb
     - TAG=4.0
+    - TAG=4.0-nordb
 
 script:
   - make build

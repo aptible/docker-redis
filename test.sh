@@ -5,7 +5,7 @@ set -o nounset
 IMG="$REGISTRY/$REPOSITORY:$TAG"
 
 # Run image internal tests
-docker run -i --rm --entrypoint bats "$IMG" /tmp/test
+docker run -i --rm --entrypoint bats "$IMG" "/tmp/test/$TAG" "/tmp/test"
 
 # Run external tests
 ./test-restart.sh "$IMG"

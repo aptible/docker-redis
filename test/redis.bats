@@ -1,65 +1,13 @@
 #!/usr/bin/env bats
 
-TEST_BASE_DIRECTORY="/tmp/test-root"
+source '/tmp/test/test_helper.sh'
 
 setup() {
-  # Create a temporary dir structure for the test
-  export DATA_DIRECTORY="${TEST_BASE_DIRECTORY}/data"
-  export CONFIG_DIRECTORY="${TEST_BASE_DIRECTORY}/config"
-  export STUNNEL_ROOT_DIRECTORY="${TEST_BASE_DIRECTORY}/stunnel"
-  export SSL_CERTS_DIRECTORY="${TEST_BASE_DIRECTORY}/certs"
-  mkdir -p "$DATA_DIRECTORY" "$CONFIG_DIRECTORY" "$STUNNEL_ROOT_DIRECTORY" "$SSL_CERTS_DIRECTORY"
-
-  # Now, pick different ports to check that our image will accept those
-  export REDIS_PORT="$(pick-free-port)"
-  export SSL_PORT="$(pick-free-port)"
-
-  if [[ "$REDIS_PORT" = "$SSL_PORT" ]]; then
-    echo "Test precondition failed! REDIS_PORT = SSL_PORT = $REDIS_PORT"
-    exit 1
-  fi
-
-  # Load our test CA as a trusted CA.
-  cp "${BATS_TEST_DIRNAME}/ssl/ca.pem" "$SSL_CERTS_DIRECTORY"
-  c_rehash "$SSL_CERTS_DIRECTORY"
-
-  # Load our test certs
-  export SSL_CERTIFICATE="$(cat "${BATS_TEST_DIRNAME}/ssl/server-cert.pem")"
-  export SSL_KEY="$(cat "${BATS_TEST_DIRNAME}/ssl/server-key.pem")"
-
-  export DATABASE_PASSWORD="password12345"
-
-  export REDIS_DATABASE_URL="redis://:$DATABASE_PASSWORD@localhost"
-  export REDIS_DATABASE_URL_FULL="redis://:$DATABASE_PASSWORD@localhost:${REDIS_PORT}"
-
-  export SSL_DATABASE_URL="rediss://:$DATABASE_PASSWORD@localhost"
-  export SSL_DATABASE_URL_FULL="rediss://:$DATABASE_PASSWORD@localhost:${SSL_PORT}"
-
-  rm -rf "$DATA_DIRECTORY"
-  mkdir -p "$DATA_DIRECTORY"
-  rm -rf "$CONFIG_DIRECTORY"
-  mkdir -p "$CONFIG_DIRECTORY"
+  do_setup
 }
-
 
 teardown() {
-  unset REDIS_DATABASE_URL
-  stop_redis
-  rm -r "$TEST_BASE_DIRECTORY"
-}
-
-
-start_redis () {
-  PASSPHRASE="$DATABASE_PASSWORD" run-database.sh --initialize
-  run-database.sh > "$BATS_TEST_DIRNAME/redis.log" &
-  timeout 4 sh -c "while  ! grep 'accept connections' '$BATS_TEST_DIRNAME/redis.log' ; do sleep 0.1; done"
-}
-
-
-stop_redis () {
-  PID="$(pidof supervisord)" || return 0
-  kill -TERM "$PID"
-  while [ -n "$PID" ] && [ -e /proc/$PID ]; do sleep 0.1; done
+  do_teardown
 }
 
 local_s_client() {
@@ -71,6 +19,7 @@ local_s_client() {
 }
 
 @test "It should support Redis connections" {
+  initialize_redis
   start_redis
   run-database.sh --client "$REDIS_DATABASE_URL" SET test_key test_value
   run run-database.sh --client "$REDIS_DATABASE_URL_FULL" GET test_key
@@ -78,7 +27,14 @@ local_s_client() {
   [[ "$output" = "test_value" ]]
 }
 
+@test "It should require authentication" {
+  initialize_redis
+  start_redis
+  run-database.sh --client "redis://localhost:${REDIS_PORT}/db" INFO 2>&1 | grep NOAUTH
+}
+
 @test "It should support SSL connections" {
+  initialize_redis
   start_redis
   run-database.sh --client "$SSL_DATABASE_URL" SET test_key test_value
   run run-database.sh --client "$SSL_DATABASE_URL_FULL" GET test_key
@@ -87,6 +43,7 @@ local_s_client() {
 }
 
 @test "It should not run two Redis instances" {
+  initialize_redis
   start_redis
   run-database.sh --client "$REDIS_DATABASE_URL" SET test_key test_value
   run run-database.sh --client "$SSL_DATABASE_URL" GET test_key
@@ -95,6 +52,7 @@ local_s_client() {
 }
 
 @test "It should require SSL on the SSL port" {
+  initialize_redis
   start_redis
   run run-database.sh --client "redis://:$DATABASE_PASSWORD@localhost:${SSL_PORT}/db" INFO
   [[ "$status" -eq 1 ]]
@@ -112,6 +70,7 @@ backup_restore_test() {
   mkdir "$DATA_DIRECTORY"
 
   # Restart. Data should be gone.
+  initialize_redis
   start_redis
   run run-database.sh --client "$url" GET test_key
   [ "$status" -eq "0" ]
@@ -126,12 +85,14 @@ backup_restore_test() {
 
 @test "It should backup and restore over the Redis protocol" {
   # Load a key
+  initialize_redis
   start_redis
   backup_restore_test "$REDIS_DATABASE_URL"
 }
 
 @test "It should backup and restore over SSL" {
   # Load a key
+  initialize_redis
   start_redis
   backup_restore_test "$SSL_DATABASE_URL"
 }
@@ -155,6 +116,7 @@ export_exposed_ports() {
 }
 
 @test "It should return a usable connection URL for --connection-url" {
+  initialize_redis
   start_redis
 
   export_exposed_ports
@@ -177,24 +139,28 @@ export_exposed_ports() {
 }
 
 @test "stunnel allows TLS1.2" {
+  initialize_redis
   start_redis
   run local_s_client "$SSL_PORT" -tls1_2
   [ "$status" -eq 0 ]
 }
 
 @test "stunnel allows TLS1.1" {
+  initialize_redis
   start_redis
   run local_s_client "$SSL_PORT" -tls1_1
   [ "$status" -eq 0 ]
 }
 
 @test "stunnel allows TLS1.0" {
+  initialize_redis
   start_redis
   run local_s_client "$SSL_PORT" -tls1
   [ "$status" -eq 0 ]
 }
 
 @test "stunnel disallows SSLv3" {
+  initialize_redis
   start_redis
   run local_s_client "$SSL_PORT" -ssl3
   [ "$status" -ne 0 ]

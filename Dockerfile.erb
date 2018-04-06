@@ -41,6 +41,10 @@ ENV SSL_PORT=6380 SSL_PROTOCOL=rediss
 
 ENV CA_CERTS=/etc/ssl
 
+<% if ENV['REDIS_NORDB'] %>
+ENV REDIS_NORDB <%= ENV.fetch 'REDIS_NORDB' %>
+<% end %>
+
 # Volumes: Aptible will automatically mount these on an EBS device
 VOLUME ["$DATA_DIRECTORY"]
 VOLUME ["$CONFIG_DIRECTORY"]
@@ -49,7 +53,7 @@ VOLUME ["$CONFIG_DIRECTORY"]
 RUN mkdir -p "$DATA_DIRECTORY" "$CONFIG_DIRECTORY" "$STUNNEL_ROOT_DIRECTORY"
 
 # Integration tests
-ADD <%= ENV.fetch 'TAG' %>/test /tmp/test
+ADD <%= ENV.fetch 'TAG' %>/test /tmp/test/<%= ENV.fetch 'TAG' %>
 ADD test /tmp/test
 
 EXPOSE 6379

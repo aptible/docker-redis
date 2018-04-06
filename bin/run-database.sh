@@ -6,6 +6,7 @@ set -o nounset
 . /usr/bin/utilities.sh
 
 export ARGUMENT_FILE="${CONFIG_DIRECTORY}/arguments"
+export CONFIG_EXTRA_FILE="${CONFIG_DIRECTORY}/redis.extra.conf"
 DUMP_FILENAME="/tmp/dump.rdb"
 
 # This port is an arbitrary constant, and must point to the master we'll be
@@ -158,6 +159,12 @@ if [[ "$#" -eq 0 ]]; then
 
 elif [[ "$1" == "--initialize" ]]; then
   echo "--requirepass $PASSPHRASE" > "$ARGUMENT_FILE"
+
+  touch "$CONFIG_EXTRA_FILE"
+  if [[ -n "${REDIS_NORDB:-}" ]]; then
+    echo 'appendonly no' >> "$CONFIG_EXTRA_FILE"
+    echo 'save ""' >> "$CONFIG_EXTRA_FILE"
+  fi
 
 elif [[ "$1" == "--initialize-from" ]]; then
   [ -z "$2" ] && echo "docker run -i aptible/redis --initialize-from redis://... rediss://..." && exit

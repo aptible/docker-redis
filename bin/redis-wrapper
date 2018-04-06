@@ -2,9 +2,15 @@
 set -o nounset
 set -o errexit
 
+config_file="$(mktemp)"
+cat "/etc/redis.conf" >> "$config_file"
+if [[ -f "$CONFIG_EXTRA_FILE" ]]; then
+  cat "$CONFIG_EXTRA_FILE" >> "$config_file"
+fi
+
 # shellcheck disable=SC2046
 exec redis-server \
-  /etc/redis.conf \
+  "$config_file" \
   --port "$REDIS_PORT" \
   --dir "$DATA_DIRECTORY" \
   $(cat "$ARGUMENT_FILE")
