@@ -28,7 +28,7 @@ if [[ "$REDIS_VERSION" =~ ^2.8.[0-9]+$ ]]; then
   patch -p1 -i "./${NO_BACKTRACE_PATCH}"
 fi
 
-make all PREFIX=/usr/local MALLOC=libc
+make all PREFIX=/usr/local MALLOC=jemalloc
 make install
 
 popd
