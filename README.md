@@ -27,11 +27,11 @@ In addition to the standard Aptible database ENV variables, which may be specifi
 
 ## Available Tags
 
-* `latest`: Currently Redis 4.0.2
-* `4.0`: Redis 4.0.2
-* `3.2`: Redis 3.2.11
-* `3.0`: Redis 3.0.7
-* `2.8`: Redis 2.8.24
+* `latest`: Currently Redis 4.0
+* `4.0`: Redis 4.0.11
+* `3.2`: Redis 3.2.12
+* `3.0`: Redis 3.0.7 [EOL](https://redis.io/topics/releases)
+* `2.8`: Redis 2.8.24 [EOL](https://redis.io/topics/releases)
 
 ## Tests
 
