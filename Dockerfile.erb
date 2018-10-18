@@ -1,8 +1,5 @@
 FROM quay.io/aptible/alpine:3.4
 
-ENV REDIS_VERSION <%= ENV.fetch 'REDIS_VERSION' %>
-ENV REDIS_SHA1SUM <%= ENV.fetch 'REDIS_SHA1SUM' %>
-
 ENV REDIS_USER redis
 RUN addgroup "$REDIS_USER"
 RUN adduser -S "$REDIS_USER" -G "$REDIS_USER"
@@ -11,6 +8,9 @@ RUN apk-install supervisor ca-certificates
 
 ADD bin/install-stunnel.sh /install-stunnel.sh
 RUN /install-stunnel.sh
+
+ENV REDIS_VERSION <%= ENV.fetch 'REDIS_VERSION' %>
+ENV REDIS_SHA1SUM <%= ENV.fetch 'REDIS_SHA1SUM' %>
 
 ADD bin/install-redis.sh /install-redis.sh
 RUN /install-redis.sh

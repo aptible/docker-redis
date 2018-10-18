@@ -24,7 +24,7 @@ local_s_client() {
   run-database.sh --client "$REDIS_DATABASE_URL" SET test_key test_value
   run run-database.sh --client "$REDIS_DATABASE_URL_FULL" GET test_key
   [ "$status" -eq "0" ]
-  [[ "$output" = "test_value" ]]
+  [[ "$output" =~ "test_value" ]]
 }
 
 @test "It should require authentication" {
@@ -39,7 +39,7 @@ local_s_client() {
   run-database.sh --client "$SSL_DATABASE_URL" SET test_key test_value
   run run-database.sh --client "$SSL_DATABASE_URL_FULL" GET test_key
   [ "$status" -eq "0" ]
-  [[ "$output" = "test_value" ]]
+  [[ "$output" =~ "test_value" ]]
 }
 
 @test "It should not run two Redis instances" {
@@ -48,7 +48,7 @@ local_s_client() {
   run-database.sh --client "$REDIS_DATABASE_URL" SET test_key test_value
   run run-database.sh --client "$SSL_DATABASE_URL" GET test_key
   [ "$status" -eq "0" ]
-  [[ "$output" = "test_value" ]]
+  [[ "$output" =~ "test_value" ]]
 }
 
 @test "It should require SSL on the SSL port" {
@@ -74,13 +74,13 @@ backup_restore_test() {
   start_redis
   run run-database.sh --client "$url" GET test_key
   [ "$status" -eq "0" ]
-  [[ "$output" = "" ]]
+  [[ "$output" = "" ]] || [[ "$output" = "Warning: Using a password with '-a' option on the command line interface may not be safe." ]]
 
   # Restore. Data should be back.
   run-database.sh --restore "$url" < redis.dump
   run run-database.sh --client "$url" GET test_key
   [ "$status" -eq "0" ]
-  [[ "$output" = "test_value" ]]
+  [[ "$output" =~ "test_value" ]]
 }
 
 @test "It should backup and restore over the Redis protocol" {
