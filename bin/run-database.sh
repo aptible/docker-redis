@@ -166,6 +166,10 @@ elif [[ "$1" == "--initialize" ]]; then
     echo 'save ""' >> "$CONFIG_EXTRA_FILE"
   fi
 
+  if [[ -n "${REDIS_AOF:-}" ]]; then
+    echo 'appendonly yes' >> "$CONFIG_EXTRA_FILE"
+  fi
+
 elif [[ "$1" == "--initialize-from" ]]; then
   [ -z "$2" ] && echo "docker run -i aptible/redis --initialize-from redis://... rediss://..." && exit
   shift

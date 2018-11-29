@@ -27,11 +27,19 @@ In addition to the standard Aptible database ENV variables, which may be specifi
 
 ## Available Tags
 
-* `latest`: Currently Redis 4.0
-* `4.0`: Redis 4.0.11
-* `3.2`: Redis 3.2.12
-* `3.0`: Redis 3.0.7 [EOL](https://redis.io/topics/releases)
-* `2.8`: Redis 2.8.24 [EOL](https://redis.io/topics/releases)
+* `latest`: Currently Redis 4.0-aof
+* `4.0`: Redis 4.0.11 w/ RDB persistence
+* `4.0-aof`: AOF+RDB persistence
+* `4.0-nordb: no persistennce
+* `3.2`: Redis 3.2.12 w/ RDB persistence
+* `3.2-aof`: AOF+RDB persistence
+* `3.2-nordb: no persistennce
+* `3.0`: Redis 3.0.7 w/ RDB persistence [EOL](https://redis.io/topics/releases)
+* `3.0-aof`: AOF+RDB persistence
+* `3.0-nordb: no persistennce
+* `2.8`: Redis 2.8.24 w/ RDB persistence [EOL](https://redis.io/topics/releases)
+* `2.8-aof`: AOF+RDB persistence
+* `2.8-nordb: no persistennce
 
 ## Tests
 
