@@ -15,7 +15,17 @@ teardown() {
   run-database.sh --client "$REDIS_DATABASE_URL" SET test_key test_value
 
   stop_redis
+
+  [[ -f "${DATA_DIRECTORY}/dump.rdb" ]]
+
+  if [[ "$TAG" =~ .*-aof ]]; then
+    [[ -f "${DATA_DIRECTORY}/appendonly.aof" ]]
+  else
+    [[ ! -f "${DATA_DIRECTORY}/appendonly.aof" ]]
+  fi
+
   start_redis
 
   run-database.sh --client "$REDIS_DATABASE_URL" GET test_key | grep -q test_value
+
 }

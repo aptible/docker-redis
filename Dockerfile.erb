@@ -45,6 +45,12 @@ ENV CA_CERTS=/etc/ssl
 ENV REDIS_NORDB <%= ENV.fetch 'REDIS_NORDB' %>
 <% end %>
 
+<% if ENV['REDIS_AOF'] %>
+ENV REDIS_AOF <%= ENV.fetch 'REDIS_AOF' %>
+<% end %>
+
+ENV TAG <%= ENV.fetch 'TAG' %>
+
 # Volumes: Aptible will automatically mount these on an EBS device
 VOLUME ["$DATA_DIRECTORY"]
 VOLUME ["$CONFIG_DIRECTORY"]

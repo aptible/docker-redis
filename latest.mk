@@ -1,1 +1,1 @@
-LATEST_TAG = 4.0
+LATEST_TAG = 4.0-aof
