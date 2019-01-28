@@ -18,6 +18,10 @@ env:
     - TAG=4.0
     - TAG=4.0-nordb
     - TAG=4.0-aof
+    - TAG=5.0
+    - TAG=5.0-nordb
+    - TAG=5.0-aof
+
 
 script:
   - make build
