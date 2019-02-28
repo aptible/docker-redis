@@ -74,7 +74,9 @@ backup_restore_test() {
   start_redis
   run run-database.sh --client "$url" GET test_key
   [ "$status" -eq "0" ]
-  [[ "$output" = "" ]] || [[ "$output" = "Warning: Using a password with '-a' option on the command line interface may not be safe." ]]
+  [[ "$output" = "" ]] || \
+    [[ "$output" = "Warning: Using a password with '-a' option on the command line interface may not be safe." ]] || \
+    [[ "$output" = "Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe." ]]
 
   # Restore. Data should be back.
   run-database.sh --restore "$url" < redis.dump
