@@ -1,4 +1,4 @@
-@test "It should install Redis 4.0.12" {
+@test "It should install Redis 4.0.14" {
   run redis-server --version
-  [[ "$output" =~ "4.0.12"  ]]
+  [[ "$output" =~ "4.0.14"  ]]
 }
