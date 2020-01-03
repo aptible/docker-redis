@@ -1,4 +1,4 @@
-export REDIS_VERSION = 5.0.4
-export REDIS_SHA1SUM = db4cad466db8fbde7c05131d72f526a2e860078a
+export REDIS_VERSION = 5.0.7
+export REDIS_SHA1SUM = f21bcc123b4c707c5a486034be4cf6e5ba1438e7
 
 export REDIS_NORDB = 1
