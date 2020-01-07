@@ -10,9 +10,9 @@ teardown() {
   do_teardown
 }
 
-@test "It should install Redis 5.0.4" {
+@test "It should install Redis 5.0.7" {
   run redis-server --version
-  [[ "$output" =~ "5.0.4"  ]]
+  [[ "$output" =~ "5.0.7"  ]]
 }
 
 @test "Is it worthwhile to do work that does not produce any technological result?" {
