@@ -4,15 +4,15 @@ import signal
 
 from supervisor import childutils
 
+exit_events = ['PROCESS_STATE_FATAL', 'PROCESS_STATE_EXITED']
 
 def main():
     while True:
         headers, payload = childutils.listener.wait()
         childutils.listener.ok()
-        if headers['eventname'] != 'PROCESS_STATE_FATAL':
+        if headers['eventname'] not in exit_events:
             continue
         os.kill(os.getppid(), signal.SIGTERM)
-
 
 if __name__ == "__main__":
     main()

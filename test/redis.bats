@@ -171,19 +171,8 @@ export_exposed_ports() {
 @test "It should stop supervisor when Redis dies" {
   initialize_redis
   start_redis
-  PID="$(pidof redis-server)"
-  kill -TERM "$PID"
-  while [ -n "$PID" ] && [ -e "/proc/${PID}" ]; do sleep 0.1; done
-  run pidof supervisord
-  [ "$status" -eq 1 ]
-}
-
-@test "It should stop supervisor when Redis dies" {
-  initialize_redis
-  start_redis
 
   SUPERVISOR_PID="$(pidof supervisord)"
-
 
   # If we don't sleep here, the supervisor process state
   # ends up being BACKOFF, and Redis restarts instead of
@@ -195,7 +184,6 @@ export_exposed_ports() {
   sleep 10
 
   PID="$(pidof redis-server)"
-  echo "killing ${PID}"
   pkill -TERM redis-server
   while [ -n "$PID" ] && [ -e "/proc/${PID}" ]; do sleep 0.1; done
 
@@ -208,6 +196,5 @@ export_exposed_ports() {
   done
 
   run pidof supervisord
-  echo $status
   [ "$status" -eq 1 ]
 }
