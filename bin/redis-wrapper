@@ -8,6 +8,10 @@ if [[ -f "$CONFIG_EXTRA_FILE" ]]; then
   cat "$CONFIG_EXTRA_FILE" >> "$config_file"
 fi
 
+echo "----The following persistent configuration changes are present----"
+egrep -v "^#" "${CONFIG_EXTRA_FILE}" || true
+echo "--------------End persistent configuration changes----------------"
+
 # shellcheck disable=SC2046
 exec redis-server \
   "$config_file" \
