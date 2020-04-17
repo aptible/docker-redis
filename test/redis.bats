@@ -167,3 +167,12 @@ export_exposed_ports() {
   run local_s_client "$SSL_PORT" -ssl3
   [ "$status" -ne 0 ]
 }
+
+@test "It prints the persistent configuration changes on boot." {
+  echo "maxclients 12345" >> "${CONFIG_DIRECTORY}/redis.extra.conf"
+  initialize_redis
+  start_redis
+
+  grep "persistent configuration changes" "${TEST_BASE_DIRECTORY}/redis.log"
+  grep "maxclients" "${TEST_BASE_DIRECTORY}/redis.log"
+}
