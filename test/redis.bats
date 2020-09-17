@@ -198,7 +198,7 @@ export_exposed_ports() {
 
   run pidof supervisord
   [ "$status" -eq 1 ]
-
+}
 
 @test "It prints the persistent configuration changes on boot." {
   echo "maxclients 12345" >> "${CONFIG_DIRECTORY}/redis.extra.conf"
