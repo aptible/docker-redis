@@ -168,6 +168,7 @@ export_exposed_ports() {
   [ "$status" -ne 0 ]
 }
 
+
 @test "It should stop supervisor when Redis dies" {
   initialize_redis
   start_redis
@@ -197,4 +198,13 @@ export_exposed_ports() {
 
   run pidof supervisord
   [ "$status" -eq 1 ]
+
+
+@test "It prints the persistent configuration changes on boot." {
+  echo "maxclients 12345" >> "${CONFIG_DIRECTORY}/redis.extra.conf"
+  initialize_redis
+  start_redis
+
+  grep "persistent configuration changes" "${TEST_BASE_DIRECTORY}/redis.log"
+  grep "maxclients" "${TEST_BASE_DIRECTORY}/redis.log"
 }
