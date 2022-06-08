@@ -170,6 +170,10 @@ export_exposed_ports() {
 
 
 @test "It should stop supervisor when Redis dies" {
+  if [[ -n "$INTEGRATED_TLS" ]]; then
+    skip
+  fi
+
   initialize_redis
   start_redis
 

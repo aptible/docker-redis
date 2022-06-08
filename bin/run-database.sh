@@ -15,7 +15,7 @@ MASTER_FORWARD_PORT=8765
 MASTER_FORWARD_CONF="${DATA_DIRECTORY}/master-tunnel.conf"
 
 ensure_ssl_material() {
-  if [ -n "${SSL_CERTIFICATE:-}" ] && [ -n "${SSL_KEY:-}" ]; then
+  if [[ -n "${SSL_CERTIFICATE:-}" ]] && [[ -n "${SSL_KEY:-}" ]]; then
     # Nothing to do!
     return
   fi
@@ -109,24 +109,33 @@ start_redis_cli() {
 start_server() {
   ensure_ssl_material
 
-  STUNNEL_DIRECTORY="$(mktemp -d -p "$STUNNEL_ROOT_DIRECTORY")"
-  export STUNNEL_DIRECTORY
+  if [[ -n "${INTEGRATED_TLS:-}" ]]; then
+    TLS_CERT_FILE="$(mktemp)"
+    TLS_KEY_FILE="$(mktemp)"
 
-  # Set up SSL using stunnel.
-  SSL_CERT_FILE="$(mktemp -p "$STUNNEL_DIRECTORY")"
-  echo "$SSL_CERTIFICATE" > "$SSL_CERT_FILE"
-  unset SSL_CERTIFICATE
+    echo "$SSL_CERTIFICATE" > "$TLS_CERT_FILE"
+    echo "$SSL_KEY" > "$TLS_KEY_FILE"
 
-  SSL_KEY_FILE="$(mktemp -p "$STUNNEL_DIRECTORY")"
-  echo "$SSL_KEY" > "$SSL_KEY_FILE"
-  unset SSL_KEY
+    chown "${REDIS_USER}:${REDIS_USER}" "$TLS_CERT_FILE" "$TLS_KEY_FILE"
+  else
+    STUNNEL_DIRECTORY="$(mktemp -d -p "$STUNNEL_ROOT_DIRECTORY")"
+    export STUNNEL_DIRECTORY
 
-  STUNNEL_TUNNELS_DIRECTORY="${STUNNEL_DIRECTORY}/tunnels"
-  mkdir "$STUNNEL_TUNNELS_DIRECTORY"
+    # Set up SSL using stunnel.
+    SSL_CERT_FILE="$(mktemp -p "$STUNNEL_DIRECTORY")"
+    echo "$SSL_CERTIFICATE" > "$SSL_CERT_FILE"
+    unset SSL_CERTIFICATE
 
-  REDIS_TUNNEL_FILE="${STUNNEL_TUNNELS_DIRECTORY}/redis.conf"
+    SSL_KEY_FILE="$(mktemp -p "$STUNNEL_DIRECTORY")"
+    echo "$SSL_KEY" > "$SSL_KEY_FILE"
+    unset SSL_KEY
 
-  cat > "$REDIS_TUNNEL_FILE" <<EOF
+    STUNNEL_TUNNELS_DIRECTORY="${STUNNEL_DIRECTORY}/tunnels"
+    mkdir "$STUNNEL_TUNNELS_DIRECTORY"
+
+    REDIS_TUNNEL_FILE="${STUNNEL_TUNNELS_DIRECTORY}/redis.conf"
+
+    cat > "$REDIS_TUNNEL_FILE" <<EOF
 [redis]
 accept = ${SSL_PORT}
 connect = ${REDIS_PORT}
@@ -134,8 +143,9 @@ cert = ${SSL_CERT_FILE}
 key = ${SSL_KEY_FILE}
 EOF
 
-  if [[ -f "$MASTER_FORWARD_CONF" ]]; then
-    cp "$MASTER_FORWARD_CONF" "${STUNNEL_TUNNELS_DIRECTORY}/master-tunnel.conf"
+    if [[ -f "$MASTER_FORWARD_CONF" ]]; then
+      cp "$MASTER_FORWARD_CONF" "${STUNNEL_TUNNELS_DIRECTORY}/master-tunnel.conf"
+    fi
   fi
 
   # Finally, we force-chown the data directory and its contents. There won't be many
@@ -145,12 +155,21 @@ EOF
 
   touch "$ARGUMENT_FILE" # don't crash and burn if initialize wasn't called.
 
-  if [ -n "${MAX_MEMORY:-}" ]; then
+  if [[ -n "${MAX_MEMORY:-}" ]]; then
     echo "--maxmemory-policy allkeys-lru" >> "$ARGUMENT_FILE"
     echo "--maxmemory ${MAX_MEMORY}" >> "$ARGUMENT_FILE"
   fi
 
-  exec supervisord -c "/etc/supervisord.conf"
+  if [[ -n "${INTEGRATED_TLS:-}" ]]; then
+    echo "--tls-port ${SSL_PORT}" >> "$ARGUMENT_FILE"
+    echo "--tls-cert-file ${TLS_CERT_FILE}" >> "$ARGUMENT_FILE"
+    echo "--tls-key-file ${TLS_KEY_FILE}" >> "$ARGUMENT_FILE"
+    echo "--tls-auth-clients no" >> "$ARGUMENT_FILE"
+
+    exec sudo -E -u "$REDIS_USER" redis-wrapper
+  else
+    exec supervisord -c "/etc/supervisord.conf"
+  fi
 }
 
 
@@ -161,6 +180,10 @@ elif [[ "$1" == "--initialize" ]]; then
   echo "--requirepass $PASSPHRASE" > "$ARGUMENT_FILE"
 
   touch "$CONFIG_EXTRA_FILE"
+  if [[ -n "${INTEGRATED_TLS:-}" ]]; then
+    echo 'appendonly yes' >> "$CONFIG_EXTRA_FILE"
+  fi
+
   if [[ -n "${REDIS_NORDB:-}" ]]; then
     echo 'appendonly no' >> "$CONFIG_EXTRA_FILE"
     echo 'save ""' >> "$CONFIG_EXTRA_FILE"

@@ -16,6 +16,8 @@ teardown() {
 
   stop_redis
 
+  find / -name '*.rdb'
+
   [[ -f "${DATA_DIRECTORY}/dump.rdb" ]]
 
   if [[ "$TAG" =~ .*-aof ]]; then

@@ -4,10 +4,15 @@ ENV REDIS_USER redis
 RUN addgroup "$REDIS_USER"
 RUN adduser -S "$REDIS_USER" -G "$REDIS_USER"
 
+<% if ENV.fetch('REDIS_VERSION').to_f >= 6.0 %>
+ENV INTEGRATED_TLS=true
+RUN apk-install ca-certificates sudo
+<% else %>
 RUN apk-install supervisor ca-certificates
 
 ADD bin/install-stunnel.sh /install-stunnel.sh
 RUN /install-stunnel.sh
+<% end %>
 
 ENV REDIS_VERSION <%= ENV.fetch 'REDIS_VERSION' %>
 ENV REDIS_SHA1SUM <%= ENV.fetch 'REDIS_SHA1SUM' %>
@@ -23,18 +28,23 @@ RUN apk-install openssl pwgen
 RUN apk-install py-pip coreutils && pip install rdbtools
 
 ADD templates/redis.conf /etc/redis.conf
-ADD templates/supervisord.conf /etc/supervisord.conf
 
 ADD bin/pick-free-port /usr/bin/
 ADD bin/exit-event-listener /usr/bin/
 ADD bin/redis-wrapper /usr/bin/
-ADD bin/stunnel-wrapper /usr/bin/
 
 ADD bin/run-database.sh /usr/bin/
 ADD bin/utilities.sh /usr/bin/
 
+<% if ENV.fetch('REDIS_VERSION').to_f < 6.0 %>
+ADD templates/supervisord.conf /etc/supervisord.conf
+
+ADD bin/stunnel-wrapper /usr/bin/
+ENV STUNNEL_ROOT_DIRECTORY=/etc/stunnel
+<% end %>
+
 # Default ENV
-ENV DATA_DIRECTORY=/var/db CONFIG_DIRECTORY=/etc/redis STUNNEL_ROOT_DIRECTORY=/etc/stunnel
+ENV DATA_DIRECTORY=/var/db CONFIG_DIRECTORY=/etc/redis
 ENV SSL_CERTS_DIRECTORY=/etc/ssl/certs
 ENV REDIS_PORT=6379 REDIS_PROTOCOL=redis
 ENV SSL_PORT=6380 SSL_PROTOCOL=rediss
@@ -56,7 +66,11 @@ VOLUME ["$DATA_DIRECTORY"]
 VOLUME ["$CONFIG_DIRECTORY"]
 
 # Create default directories
+<% if ENV.fetch('REDIS_VERSION').to_f >= 6.0 %>
+RUN mkdir -p "$DATA_DIRECTORY" "$CONFIG_DIRECTORY"
+<% else %>
 RUN mkdir -p "$DATA_DIRECTORY" "$CONFIG_DIRECTORY" "$STUNNEL_ROOT_DIRECTORY"
+<% end %>
 
 # Integration tests
 ADD <%= ENV.fetch 'TAG' %>/test /tmp/test/<%= ENV.fetch 'TAG' %>
