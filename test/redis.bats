@@ -2,6 +2,8 @@
 
 source '/tmp/test/test_helper.sh'
 
+CA_CERT='/tmp/test/ssl/ca.pem'
+
 setup() {
   do_setup
 }
@@ -12,6 +14,12 @@ teardown() {
 
 local_s_client() {
   echo OK | openssl s_client -connect localhost:"$@"
+}
+
+stunnel_only() {
+  if [[ -n "$INTEGRATED_TLS" ]]; then
+    skip
+  fi
 }
 
 @test "It should install Redis to /usr/local/bin/redis-server" {
@@ -36,8 +44,8 @@ local_s_client() {
 @test "It should support SSL connections" {
   initialize_redis
   start_redis
-  run-database.sh --client "$SSL_DATABASE_URL" SET test_key test_value
-  run run-database.sh --client "$SSL_DATABASE_URL_FULL" GET test_key
+  run-database.sh --client "$SSL_DATABASE_URL" --cacert "${SSL_CERTS_DIRECTORY}/ca.pem" SET test_key test_value
+  run run-database.sh --client "$SSL_DATABASE_URL_FULL" --cacert "${SSL_CERTS_DIRECTORY}/ca.pem" GET test_key
   [ "$status" -eq "0" ]
   [[ "$output" =~ "test_value" ]]
 }
@@ -46,7 +54,7 @@ local_s_client() {
   initialize_redis
   start_redis
   run-database.sh --client "$REDIS_DATABASE_URL" SET test_key test_value
-  run run-database.sh --client "$SSL_DATABASE_URL" GET test_key
+  run run-database.sh --client "$SSL_DATABASE_URL" --cacert "${SSL_CERTS_DIRECTORY}/ca.pem" GET test_key
   [ "$status" -eq "0" ]
   [[ "$output" =~ "test_value" ]]
 }
@@ -59,10 +67,8 @@ local_s_client() {
 }
 
 backup_restore_test() {
-  local url="$1"
-
-  run-database.sh --client "$url" SET test_key test_value
-  run-database.sh --dump "$url" > redis.dump
+  run-database.sh --client "$@" SET test_key test_value
+  run-database.sh --dump "$@" > redis.dump
   stop_redis
 
   # Drop ALL the data!!!
@@ -72,15 +78,15 @@ backup_restore_test() {
   # Restart. Data should be gone.
   initialize_redis
   start_redis
-  run run-database.sh --client "$url" GET test_key
+  run run-database.sh --client "$@" GET test_key
   [ "$status" -eq "0" ]
   [[ "$output" = "" ]] || \
     [[ "$output" = "Warning: Using a password with '-a' option on the command line interface may not be safe." ]] || \
     [[ "$output" = "Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe." ]]
 
   # Restore. Data should be back.
-  run-database.sh --restore "$url" < redis.dump
-  run run-database.sh --client "$url" GET test_key
+  run-database.sh --restore "$@" < redis.dump
+  run run-database.sh --client "$@" GET test_key
   [ "$status" -eq "0" ]
   [[ "$output" =~ "test_value" ]]
 }
@@ -96,7 +102,7 @@ backup_restore_test() {
   # Load a key
   initialize_redis
   start_redis
-  backup_restore_test "$SSL_DATABASE_URL"
+  backup_restore_test "$SSL_DATABASE_URL" --cacert "${SSL_CERTS_DIRECTORY}/ca.pem"
 }
 
 export_exposed_ports() {
@@ -137,10 +143,12 @@ export_exposed_ports() {
   popd
 
   [[ "$SSL_DATABASE_URL_FULL" = "$URL" ]]
-  run-database.sh --client "$URL" INFO
+  run-database.sh --client "$URL" --cacert "${SSL_CERTS_DIRECTORY}/ca.pem" INFO
 }
 
 @test "stunnel allows TLS1.2" {
+  stunnel_only
+
   initialize_redis
   start_redis
   run local_s_client "$SSL_PORT" -tls1_2
@@ -148,6 +156,8 @@ export_exposed_ports() {
 }
 
 @test "stunnel allows TLS1.1" {
+  stunnel_only
+
   initialize_redis
   start_redis
   run local_s_client "$SSL_PORT" -tls1_1
@@ -155,6 +165,8 @@ export_exposed_ports() {
 }
 
 @test "stunnel allows TLS1.0" {
+  stunnel_only
+
   initialize_redis
   start_redis
   run local_s_client "$SSL_PORT" -tls1
@@ -162,6 +174,8 @@ export_exposed_ports() {
 }
 
 @test "stunnel disallows SSLv3" {
+  stunnel_only
+
   initialize_redis
   start_redis
   run local_s_client "$SSL_PORT" -ssl3
@@ -170,9 +184,7 @@ export_exposed_ports() {
 
 
 @test "It should stop supervisor when Redis dies" {
-  if [[ -n "$INTEGRATED_TLS" ]]; then
-    skip
-  fi
+  stunnel_only
 
   initialize_redis
   start_redis

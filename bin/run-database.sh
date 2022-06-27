@@ -96,10 +96,15 @@ start_redis_cli() {
       port="$SSL_PORT"
     fi
 
-    stunnel_dir="$(create_ephemeral_tunnel "$host" "$port")"
-    redis-cli -h "127.0.1" -p "$(cat "${stunnel_dir}/port")" -a "$password" "$@"
-    kill -TERM "$(cat "${stunnel_dir}/pid")"
-    rm -r "${stunnel_dir}"
+    if [[ -n "${INTEGRATED_TLS:-}" ]]; then
+      # shellcheck disable=SC2154
+      redis-cli -h "$host" -p "$port" -a "$password" --tls "$@"
+    else
+      stunnel_dir="$(create_ephemeral_tunnel "$host" "$port")"
+      redis-cli -h "127.0.1" -p "$(cat "${stunnel_dir}/port")" -a "$password" "$@"
+      kill -TERM "$(cat "${stunnel_dir}/pid")"
+      rm -r "${stunnel_dir}"
+    fi
 
   else
     echo "Unknown protocol: $protocol"
@@ -180,9 +185,6 @@ elif [[ "$1" == "--initialize" ]]; then
   echo "--requirepass $PASSPHRASE" > "$ARGUMENT_FILE"
 
   touch "$CONFIG_EXTRA_FILE"
-  if [[ -n "${INTEGRATED_TLS:-}" ]]; then
-    echo 'appendonly yes' >> "$CONFIG_EXTRA_FILE"
-  fi
 
   if [[ -n "${REDIS_NORDB:-}" ]]; then
     echo 'appendonly no' >> "$CONFIG_EXTRA_FILE"
@@ -235,7 +237,11 @@ elif [[ "$1" == "--client" ]]; then
 
 elif [[ "$1" == "--dump" ]]; then
   [ -z "$2" ] && echo "docker run -i aptible/redis --dump redis://... > dump.rdb" && exit
-  start_redis_cli "$2"  --rdb "$DUMP_FILENAME"
+  shift
+
+  # Redis 6+ outputs additional data to stdout.
+  # Redirect it to stderr so that stdout only contains the dump
+  start_redis_cli "$@" --rdb "$DUMP_FILENAME" >&2
 
   #shellcheck disable=SC2015
   [ -e /dump-output ] && exec 3>/dump-output || exec 3>&1
@@ -244,11 +250,12 @@ elif [[ "$1" == "--dump" ]]; then
 
 elif [[ "$1" == "--restore" ]]; then
   [ -z "$2" ] && echo "docker run -i aptible/redis --restore redis://... < dump.rdb" && exit
+  shift
 
   #shellcheck disable=SC2015
   [ -e /restore-input ] && exec 3</restore-input || exec 3<&0
   cat > "$DUMP_FILENAME" <&3
-  rdb --command protocol "$DUMP_FILENAME" | start_redis_cli "$2" --pipe
+  rdb --command protocol "$DUMP_FILENAME" | start_redis_cli "$@" --pipe
   rm "$DUMP_FILENAME"
 
 elif [[ "$1" == "--readonly" ]]; then
