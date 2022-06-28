@@ -3,14 +3,18 @@ set -o errexit
 set -o nounset
 
 IMG="$1"
+CA_CERT_FILE='/tmp/test/ssl/ca.pem'
 
 PROTOCOL="redis"
 PORT_VARIABLE="REDIS_PORT"
+
+CLIENT_OPTS=()
 
 if [[ "$#" -eq 2 ]]; then
   if [[ "$2" = "ssl" ]]; then
     PROTOCOL="rediss"
     PORT_VARIABLE="SSL_PORT"
+    CLIENT_OPTS=(--cacert "$CA_CERT_FILE")
   else
     echo "Unknown argument: $2"
     exit 1
@@ -40,7 +44,7 @@ function cleanup {
     >/dev/null 2>&1 || true
 }
 
-trap cleanup EXIT
+#trap cleanup EXIT
 cleanup
 
 PASSPHRASE=testpass
@@ -66,17 +70,19 @@ docker run -it --rm \
 MASTER_PORT=63791
 docker run -d --name="${MASTER_CONTAINER}" \
   -e "${PORT_VARIABLE}=$MASTER_PORT" \
+  -e SSL_KEY="$(cat test/ssl/server-key.pem)" \
+  -e SSL_CERTIFICATE="$(cat test/ssl/server-cert.pem)" \
   --volumes-from "$MASTER_DATA_CONTAINER" \
   "${IMG}"
 
 MASTER_IP="$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' "$MASTER_CONTAINER")"
 MASTER_URL="$PROTOCOL://:$PASSPHRASE@$MASTER_IP:$MASTER_PORT"
-until docker run --rm "${OPTS[@]}" "$IMG" --client "$MASTER_URL" INFO >/dev/null; do sleep 0.5; done
+until docker run --rm "${OPTS[@]}" "$IMG" --client "$MASTER_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" INFO >/dev/null; do sleep 0.5; done
 
 
 echo "Adding test data"
 
-docker run -it --rm "${OPTS[@]}" "$IMG" --client "$MASTER_URL" SET test_before TEST_DATA
+docker run -it --rm "${OPTS[@]}" "$IMG" --client "$MASTER_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" SET test_before TEST_DATA
 
 echo "Initializing slave"
 
@@ -87,7 +93,7 @@ echo "Initializing slave"
 if [[ "$PROTOCOL" == "rediss" ]]; then
   INITIALIZE_FROM_ARGS=("redis://foo" "$MASTER_URL" "redis://bar")
 else
-  INITIALIZE_FROM_ARGS=("$MASTER_URL")
+  INITIALIZE_FROM_ARGS=("redis://foo" "$MASTER_URL")
 fi
 
 docker run -it --rm \
@@ -97,24 +103,28 @@ docker run -it --rm \
 SLAVE_PORT=63792
 docker run -d --name "$SLAVE_CONTAINER" \
   -e "${PORT_VARIABLE}=$SLAVE_PORT" \
+  -e SSL_KEY="$(cat test/ssl/server-key.pem)" \
+  -e SSL_CERTIFICATE="$(cat test/ssl/server-cert.pem)" \
   --volumes-from "$SLAVE_DATA_CONTAINER" \
   "${OPTS[@]}" "$IMG"
 
+docker exec "$SLAVE_CONTAINER" cp "$CA_CERT_FILE" /usr/local/share/ca-certificates/test_ca.crt
+docker exec "$SLAVE_CONTAINER" update-ca-certificates
 
 SLAVE_IP="$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' "$SLAVE_CONTAINER")"
 SLAVE_URL="$PROTOCOL://:$PASSPHRASE@$SLAVE_IP:$SLAVE_PORT"
-until docker run --rm "${OPTS[@]}" "$IMG" --client "$SLAVE_URL" INFO >/dev/null; do sleep 0.5; done
+until docker run --rm "${OPTS[@]}" "$IMG" --client "$SLAVE_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" INFO >/dev/null; do sleep 0.5; done
 
 echo "Adding test data"
 
-docker run -it --rm "${OPTS[@]}" "$IMG" --client "$MASTER_URL" SET test_after TEST_DATA
+docker run -it --rm "${OPTS[@]}" "$IMG" --client "$MASTER_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" SET test_after TEST_DATA
 
 echo "Checking test data"
 
 sleep 1 # Give the test data a moment to show up. We might want to replace this with a busy poll.
 
-docker run -it --rm "${OPTS[@]}" "$IMG" --client "$SLAVE_URL" GET test_before | grep "TEST_DATA"
-docker run -it --rm "${OPTS[@]}" "$IMG" --client "$SLAVE_URL" GET test_after  | grep "TEST_DATA"
+docker run -it --rm "${OPTS[@]}" "$IMG" --client "$SLAVE_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" GET test_before | grep "TEST_DATA"
+docker run -it --rm "${OPTS[@]}" "$IMG" --client "$SLAVE_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" GET test_after  | grep "TEST_DATA"
 
 echo "Replication test OK!"
 
@@ -129,31 +139,33 @@ docker run -it --rm \
 CLONE_PORT=63793
 docker run -d --name="${CLONE_CONTAINER}" \
   -e "${PORT_VARIABLE}=$CLONE_PORT" \
+  -e SSL_KEY="$(cat test/ssl/server-key.pem)" \
+  -e SSL_CERTIFICATE="$(cat test/ssl/server-cert.pem)" \
   --volumes-from "$CLONE_DATA_CONTAINER" \
   "${IMG}"
 
 CLONE_IP="$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' "$CLONE_CONTAINER")"
 CLONE_URL="$PROTOCOL://:$PASSPHRASE@$CLONE_IP:$CLONE_PORT"
-until docker run --rm "${OPTS[@]}" "$IMG" --client "$CLONE_URL" INFO >/dev/null; do sleep 0.5; done
+until docker run --rm "${OPTS[@]}" "$IMG" --client "$CLONE_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" INFO >/dev/null; do sleep 0.5; done
 
 
 echo "Checking master has no data"
-docker run -it --rm "${OPTS[@]}" "$IMG" --client "$CLONE_URL" GET test_after | grep "TEST_DATA" && false
+docker run -it --rm "${OPTS[@]}" "$IMG" --client "$CLONE_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" --cacert GET test_after | grep "TEST_DATA" && false
 
 
 echo "Cloning master"
 
-docker run --name "$FIFO_EXPORT" -d  \
+docker run --name "$FIFO_EXPORT" -d \
   --volumes-from "${FIFO_CONTAINER}" \
   --entrypoint "/bin/sh" \
-  "${OPTS[@]}" "$IMG" "-c" "ln -s '/var/db/fifo' '/dump-output' && run-database.sh --dump '$MASTER_URL'"
+  "${OPTS[@]}" "$IMG" "-c" "ln -s '/var/db/fifo' '/dump-output' && run-database.sh --dump '$MASTER_URL' --cacert '$CA_CERT_FILE'"
 
 docker run --name "$FIFO_IMPORT" -it \
   --volumes-from "${FIFO_CONTAINER}" \
   --entrypoint "/bin/sh" \
-  "${OPTS[@]}" "$IMG" "-c" "ln -s '/var/db/fifo' '/restore-input' && run-database.sh --restore '$CLONE_URL'"
+  "${OPTS[@]}" "$IMG" "-c" "ln -s '/var/db/fifo' '/restore-input' && run-database.sh --restore '$CLONE_URL' --cacert '$CA_CERT_FILE'"
 
-docker run -it --rm "${OPTS[@]}" "$IMG" --client "$CLONE_URL" GET test_after | grep "TEST_DATA"
+docker run -it --rm "${OPTS[@]}" "$IMG" --client "$CLONE_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" GET test_after | grep "TEST_DATA"
 
 
 echo "Clone test OK!"

@@ -213,13 +213,21 @@ elif [[ "$1" == "--initialize-from" ]]; then
     fi
 
   elif [[ "$protocol" = "rediss://" ]]; then
-    create_tunnel_configuration redis-master \
-      "127.0.0.1" "$MASTER_FORWARD_PORT" \
-      "$host" "$port" \
-      > "$MASTER_FORWARD_CONF"
+    if [[ -n "${INTEGRATED_TLS:-}" ]]; then
+      if [[ -z "$port" ]]; then
+        port="$SSL_PORT"
+      fi
 
-    host="127.0.0.1"
-    port="$MASTER_FORWARD_PORT"
+      tls_replication='yes'
+    else
+      create_tunnel_configuration redis-master \
+        "127.0.0.1" "$MASTER_FORWARD_PORT" \
+        "$host" "$port" \
+        > "$MASTER_FORWARD_CONF"
+
+      host="127.0.0.1"
+      port="$MASTER_FORWARD_PORT"
+    fi
   else
     echo "Unknown protocol: $protocol"
   fi
@@ -228,6 +236,10 @@ elif [[ "$1" == "--initialize-from" ]]; then
     echo "--requirepass $password" > "$ARGUMENT_FILE"
     echo "--slaveof $host ${port}" >> "$ARGUMENT_FILE"
     echo "--masterauth $password" >> "$ARGUMENT_FILE"
+    if [[ -n "${tls_replication:-}" ]]; then
+      echo '--tls-replication yes' >> "$ARGUMENT_FILE"
+      echo "--tls-ca-cert-dir ${SSL_CERTS_DIRECTORY}" >> "$ARGUMENT_FILE"
+    fi
   }
 
 elif [[ "$1" == "--client" ]]; then
