@@ -2,7 +2,10 @@
 
 source '/tmp/test/test_helper.sh'
 
-CA_CERT='/tmp/test/ssl/ca.pem'
+CLIENT_OPTS=()
+if [ -n "$INTEGRATED_TLS" ]; then
+  CLIENT_OPTS=(--cacert "${TEST_ROOT}/ssl/ca.pem")
+fi
 
 setup() {
   do_setup
@@ -18,6 +21,12 @@ local_s_client() {
 
 stunnel_only() {
   if [[ -n "$INTEGRATED_TLS" ]]; then
+    skip
+  fi
+}
+
+integrated_tls_only() {
+  if [[ -z "$INTEGRATED_TLS" ]]; then
     skip
   fi
 }
@@ -44,8 +53,8 @@ stunnel_only() {
 @test "It should support SSL connections" {
   initialize_redis
   start_redis
-  run-database.sh --client "$SSL_DATABASE_URL" --cacert "${SSL_CERTS_DIRECTORY}/ca.pem" SET test_key test_value
-  run run-database.sh --client "$SSL_DATABASE_URL_FULL" --cacert "${SSL_CERTS_DIRECTORY}/ca.pem" GET test_key
+  run-database.sh --client "$SSL_DATABASE_URL" "${CLIENT_OPTS[@]}" SET test_key test_value
+  run run-database.sh --client "$SSL_DATABASE_URL_FULL" "${CLIENT_OPTS[@]}" GET test_key
   [ "$status" -eq "0" ]
   [[ "$output" =~ "test_value" ]]
 }
@@ -54,7 +63,7 @@ stunnel_only() {
   initialize_redis
   start_redis
   run-database.sh --client "$REDIS_DATABASE_URL" SET test_key test_value
-  run run-database.sh --client "$SSL_DATABASE_URL" --cacert "${SSL_CERTS_DIRECTORY}/ca.pem" GET test_key
+  run run-database.sh --client "$SSL_DATABASE_URL" "${CLIENT_OPTS[@]}" GET test_key
   [ "$status" -eq "0" ]
   [[ "$output" =~ "test_value" ]]
 }
@@ -102,7 +111,7 @@ backup_restore_test() {
   # Load a key
   initialize_redis
   start_redis
-  backup_restore_test "$SSL_DATABASE_URL" --cacert "${SSL_CERTS_DIRECTORY}/ca.pem"
+  backup_restore_test "$SSL_DATABASE_URL" "${CLIENT_OPTS[@]}"
 }
 
 export_exposed_ports() {
@@ -143,7 +152,7 @@ export_exposed_ports() {
   popd
 
   [[ "$SSL_DATABASE_URL_FULL" = "$URL" ]]
-  run-database.sh --client "$URL" --cacert "${SSL_CERTS_DIRECTORY}/ca.pem" INFO
+  run-database.sh --client "$URL" "${CLIENT_OPTS[@]}" INFO
 }
 
 @test "stunnel allows TLS1.2" {
@@ -181,7 +190,6 @@ export_exposed_ports() {
   run local_s_client "$SSL_PORT" -ssl3
   [ "$status" -ne 0 ]
 }
-
 
 @test "It should stop supervisor when Redis dies" {
   stunnel_only

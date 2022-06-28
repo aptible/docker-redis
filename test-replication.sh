@@ -9,12 +9,17 @@ PROTOCOL="redis"
 PORT_VARIABLE="REDIS_PORT"
 
 CLIENT_OPTS=()
+DUMP_RESTORE_OPTS=""
 
 if [[ "$#" -eq 2 ]]; then
   if [[ "$2" = "ssl" ]]; then
     PROTOCOL="rediss"
     PORT_VARIABLE="SSL_PORT"
-    CLIENT_OPTS=(--cacert "$CA_CERT_FILE")
+
+    if dpkg --compare-versions "$REDIS_VERSION" ge '6.0'; then
+      CLIENT_OPTS=(--cacert "$CA_CERT_FILE")
+      DUMP_RESTORE_OPTS="--cacert '$CA_CERT_FILE'"
+    fi
   else
     echo "Unknown argument: $2"
     exit 1
@@ -158,12 +163,12 @@ echo "Cloning master"
 docker run --name "$FIFO_EXPORT" -d \
   --volumes-from "${FIFO_CONTAINER}" \
   --entrypoint "/bin/sh" \
-  "${OPTS[@]}" "$IMG" "-c" "ln -s '/var/db/fifo' '/dump-output' && run-database.sh --dump '$MASTER_URL' --cacert '$CA_CERT_FILE'"
+  "${OPTS[@]}" "$IMG" "-c" "ln -s '/var/db/fifo' '/dump-output' && run-database.sh --dump '$MASTER_URL' $DUMP_RESTORE_OPTS"
 
 docker run --name "$FIFO_IMPORT" -it \
   --volumes-from "${FIFO_CONTAINER}" \
   --entrypoint "/bin/sh" \
-  "${OPTS[@]}" "$IMG" "-c" "ln -s '/var/db/fifo' '/restore-input' && run-database.sh --restore '$CLONE_URL' --cacert '$CA_CERT_FILE'"
+  "${OPTS[@]}" "$IMG" "-c" "ln -s '/var/db/fifo' '/restore-input' && run-database.sh --restore '$CLONE_URL' $DUMP_RESTORE_OPTS"
 
 docker run -it --rm "${OPTS[@]}" "$IMG" --client "$CLONE_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" GET test_after | grep "TEST_DATA"
 
