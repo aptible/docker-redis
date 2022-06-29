@@ -65,3 +65,7 @@ stop_redis () {
   kill -TERM "$PID"
   while [ -n "$PID" ] && [ -e "/proc/${PID}" ]; do sleep 0.1; done
 }
+
+local_s_client() {
+  echo OK | openssl s_client -connect localhost:"$@"
+}

@@ -15,22 +15,6 @@ teardown() {
   do_teardown
 }
 
-local_s_client() {
-  echo OK | openssl s_client -connect localhost:"$@"
-}
-
-stunnel_only() {
-  if [[ -n "$INTEGRATED_TLS" ]]; then
-    skip
-  fi
-}
-
-integrated_tls_only() {
-  if [[ -z "$INTEGRATED_TLS" ]]; then
-    skip
-  fi
-}
-
 @test "It should install Redis to /usr/local/bin/redis-server" {
   test -x /usr/local/bin/redis-server
 }
@@ -153,75 +137,6 @@ export_exposed_ports() {
 
   [[ "$SSL_DATABASE_URL_FULL" = "$URL" ]]
   run-database.sh --client "$URL" "${CLIENT_OPTS[@]}" INFO
-}
-
-@test "stunnel allows TLS1.2" {
-  stunnel_only
-
-  initialize_redis
-  start_redis
-  run local_s_client "$SSL_PORT" -tls1_2
-  [ "$status" -eq 0 ]
-}
-
-@test "stunnel allows TLS1.1" {
-  stunnel_only
-
-  initialize_redis
-  start_redis
-  run local_s_client "$SSL_PORT" -tls1_1
-  [ "$status" -eq 0 ]
-}
-
-@test "stunnel allows TLS1.0" {
-  stunnel_only
-
-  initialize_redis
-  start_redis
-  run local_s_client "$SSL_PORT" -tls1
-  [ "$status" -eq 0 ]
-}
-
-@test "stunnel disallows SSLv3" {
-  stunnel_only
-
-  initialize_redis
-  start_redis
-  run local_s_client "$SSL_PORT" -ssl3
-  [ "$status" -ne 0 ]
-}
-
-@test "It should stop supervisor when Redis dies" {
-  stunnel_only
-
-  initialize_redis
-  start_redis
-
-  SUPERVISOR_PID="$(pidof supervisord)"
-
-  # If we don't sleep here, the supervisor process state
-  # ends up being BACKOFF, and Redis restarts instead of
-  # exiting (which is what we monitor for).
-  # Multiple BACKOFFs eventually cause supervisor
-  # to stop, so we don't care about acting on those.
-  # By sleeping, we avoid restarting too quickly, avoiding
-  # the BACKOFF status.
-  sleep 10
-
-  PID="$(pidof redis-server)"
-  pkill -TERM redis-server
-  while [ -n "$PID" ] && [ -e "/proc/${PID}" ]; do sleep 0.1; done
-
-  # Supervisor takes a few seconds to stop
-  for _ in $(seq 1 30); do
-    if [ ! -e "/proc/${SUPERVISOR_PID}" ]; then
-      break
-    fi
-    sleep 1
-  done
-
-  run pidof supervisord
-  [ "$status" -eq 1 ]
 }
 
 @test "It prints the persistent configuration changes on boot." {

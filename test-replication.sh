@@ -16,7 +16,7 @@ if [[ "$#" -eq 2 ]]; then
     PROTOCOL="rediss"
     PORT_VARIABLE="SSL_PORT"
 
-    if dpkg --compare-versions "$REDIS_VERSION" ge '6.0'; then
+    if [[ "$(echo "$REDIS_VERSION" | cut -f1 -d.)" -ge '6' ]]; then
       CLIENT_OPTS=(--cacert "$CA_CERT_FILE")
       DUMP_RESTORE_OPTS="--cacert '$CA_CERT_FILE'"
     fi
@@ -49,7 +49,7 @@ function cleanup {
     >/dev/null 2>&1 || true
 }
 
-#trap cleanup EXIT
+trap cleanup EXIT
 cleanup
 
 PASSPHRASE=testpass
@@ -83,7 +83,6 @@ docker run -d --name="${MASTER_CONTAINER}" \
 MASTER_IP="$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' "$MASTER_CONTAINER")"
 MASTER_URL="$PROTOCOL://:$PASSPHRASE@$MASTER_IP:$MASTER_PORT"
 until docker run --rm "${OPTS[@]}" "$IMG" --client "$MASTER_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" INFO >/dev/null; do sleep 0.5; done
-
 
 echo "Adding test data"
 
