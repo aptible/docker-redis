@@ -86,7 +86,7 @@ backup_restore_test() {
 
 @test "It should backup and restore over the Redis protocol" {
   if [[ "$(echo "$REDIS_VERSION" | cut -f1 -d.)" -ge 7 ]]; then
-    skip "Redis 7+ not supported"
+    skip "Redis 7+ RDB files not supported"
   fi
 
   # Load a key
@@ -97,7 +97,7 @@ backup_restore_test() {
 
 @test "It should backup and restore over SSL" {
   if [[ "$(echo "$REDIS_VERSION" | cut -f1 -d.)" -ge 7 ]]; then
-    skip "Redis 7+ not supported"
+    skip "Redis 7+ RDB files not supported"
   fi
 
   # Load a key
