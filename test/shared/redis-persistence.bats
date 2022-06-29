@@ -21,7 +21,12 @@ teardown() {
   [[ -f "${DATA_DIRECTORY}/dump.rdb" ]]
 
   if [[ "$TAG" =~ .*-aof ]]; then
-    [[ -f "${DATA_DIRECTORY}/appendonly.aof" ]]
+    # Redis 7 introduced a multi part AOF mechanism
+    if [[ "$(echo "$REDIS_VERSION" | cut -f1 -d.)" -ge 7 ]]; then
+      [[ -d "${DATA_DIRECTORY}/appendonlydir" ]]
+    else
+      [[ -f "${DATA_DIRECTORY}/appendonly.aof" ]]
+    fi
   else
     [[ ! -f "${DATA_DIRECTORY}/appendonly.aof" ]]
   fi

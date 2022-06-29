@@ -1,0 +1,1 @@
+../../test/shared/redis-nordb.bats
