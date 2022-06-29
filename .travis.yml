@@ -21,6 +21,9 @@ env:
     - TAG=5.0
     - TAG=5.0-nordb
     - TAG=5.0-aof
+    - TAG=6.0
+    - TAG=6.0-nordb
+    - TAG=6.0-aof
 
 
 script:
