@@ -125,13 +125,31 @@ docker run -it --rm "${OPTS[@]}" "$IMG" --client "$MASTER_URL" "${CLIENT_OPTS[@]
 
 echo "Checking test data"
 
-sleep 1 # Give the test data a moment to show up. We might want to replace this with a busy poll.
+# Give the test data a moment to show up.
+RETRY_TIMES=10
 
-docker run -it --rm "${OPTS[@]}" "$IMG" --client "$SLAVE_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" GET test_before | grep "TEST_DATA"
-docker run -it --rm "${OPTS[@]}" "$IMG" --client "$SLAVE_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" GET test_after  | grep "TEST_DATA"
+wait_for_key() {
+  i=0
+  until docker run -it --rm "${OPTS[@]}" "$IMG" --client "$SLAVE_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" GET "$1" | grep "$2"; do
+    ((i++))
+    if [[ "$i" -ge "$RETRY_TIMES" ]]; then
+      echo "$1 data not found"
+      return 1
+    fi
+    sleep 0.5
+  done
+}
+
+wait_for_key test_before "TEST_DATA"
+wait_for_key test_after "TEST_DATA"
 
 echo "Replication test OK!"
 
+
+if [[ "$(echo "$REDIS_VERSION" | cut -f1 -d.)" -ge 7 ]]; then
+  echo "Redis 7+ does not support dump and restore. Skipping clone test."
+  exit
+fi
 
 echo "Creating empty clone"
 

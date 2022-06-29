@@ -261,6 +261,11 @@ elif [[ "$1" == "--dump" ]]; then
   rm "$DUMP_FILENAME"
 
 elif [[ "$1" == "--restore" ]]; then
+  if [[ "$(echo "$REDIS_VERSION" | cut -f1 -d.)" -ge 7 ]]; then
+    echo "Redis 7+ does not support --restore"
+    exit 1
+  fi
+
   [ -z "$2" ] && echo "docker run -i aptible/redis --restore redis://... < dump.rdb" && exit
   shift
 
