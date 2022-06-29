@@ -82,6 +82,8 @@ docker run -d --name="${MASTER_CONTAINER}" \
 
 MASTER_IP="$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' "$MASTER_CONTAINER")"
 MASTER_URL="$PROTOCOL://:$PASSPHRASE@$MASTER_IP:$MASTER_PORT"
+# Empty arrays are considered unset by some shells.
+# "${ARR[@]+"${ARR[@]}"}" prevents the script from exiting due to nounset.
 until docker run --rm "${OPTS[@]}" "$IMG" --client "$MASTER_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" INFO >/dev/null; do sleep 0.5; done
 
 echo "Adding test data"
@@ -129,15 +131,13 @@ echo "Checking test data"
 RETRY_TIMES=30
 
 wait_for_key() {
-  i=0
-  until docker run -it --rm "${OPTS[@]}" "$IMG" --client "$SLAVE_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" GET "$1" | grep "$2"; do
-    ((i++))
-    if [[ "$i" -ge "$RETRY_TIMES" ]]; then
-      echo "$1 data not found"
-      return 1
-    fi
+  for i in $(seq "$RETRY_TIMES"); do
+    docker run -it --rm "${OPTS[@]}" "$IMG" --client "$SLAVE_URL" "${CLIENT_OPTS[@]+"${CLIENT_OPTS[@]}"}" GET "$1" | grep "$2" && return 0
     sleep 0.5
   done
+
+  echo "$1 data not found"
+  return 1
 }
 
 wait_for_key test_before "TEST_DATA"
