@@ -126,7 +126,7 @@ docker run -it --rm "${OPTS[@]}" "$IMG" --client "$MASTER_URL" "${CLIENT_OPTS[@]
 echo "Checking test data"
 
 # Give the test data a moment to show up.
-RETRY_TIMES=10
+RETRY_TIMES=30
 
 wait_for_key() {
   i=0
