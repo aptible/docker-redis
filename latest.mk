@@ -1,1 +1,1 @@
-LATEST_TAG = 6.0
+LATEST_TAG = 7.0-aof

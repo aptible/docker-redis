@@ -27,11 +27,17 @@ In addition to the standard Aptible database ENV variables, which may be specifi
 
 ## Available Tags
 
-* `latest`: Currently Redis 5.0-aof
-* `5.0`: Redis 5.0.7 w/ RDB persistence
+* `latest`: Currently Redis 7.0-aof
+* `7.0`: Redis 7.0.2 w/ RDB persistence
+* `7.0-aof`: AOF+RDB persistence
+* `7.0-nordb`: no persistennce
+* `6.0`: Redis 6.0.16 w/ RDB persistence
+* `6.0-aof`: AOF+RDB persistence
+* `6.0-nordb`: no persistennce
+* `5.0`: Redis 5.0.14 w/ RDB persistence [EOL](https://redis.io/topics/releases)
 * `5.0-aof`: AOF+RDB persistence
 * `5.0-nordb`: no persistennce
-* `4.0`: Redis 4.0.14 w/ RDB persistence
+* `4.0`: Redis 4.0.14 w/ RDB persistence [EOL](https://redis.io/topics/releases)
 * `4.0-aof`: AOF+RDB persistence
 * `4.0-nordb`: no persistennce
 * `3.2`: Redis 3.2.13 w/ RDB persistence [EOL](https://redis.io/topics/releases)
