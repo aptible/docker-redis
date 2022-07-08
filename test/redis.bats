@@ -2,16 +2,17 @@
 
 source '/tmp/test/test_helper.sh'
 
+CLIENT_OPTS=()
+if [ -n "$INTEGRATED_TLS" ]; then
+  CLIENT_OPTS=(--cacert "${TEST_ROOT}/ssl/ca.pem")
+fi
+
 setup() {
   do_setup
 }
 
 teardown() {
   do_teardown
-}
-
-local_s_client() {
-  echo OK | openssl s_client -connect localhost:"$@"
 }
 
 @test "It should install Redis to /usr/local/bin/redis-server" {
@@ -36,8 +37,8 @@ local_s_client() {
 @test "It should support SSL connections" {
   initialize_redis
   start_redis
-  run-database.sh --client "$SSL_DATABASE_URL" SET test_key test_value
-  run run-database.sh --client "$SSL_DATABASE_URL_FULL" GET test_key
+  run-database.sh --client "$SSL_DATABASE_URL" "${CLIENT_OPTS[@]}" SET test_key test_value
+  run run-database.sh --client "$SSL_DATABASE_URL_FULL" "${CLIENT_OPTS[@]}" GET test_key
   [ "$status" -eq "0" ]
   [[ "$output" =~ "test_value" ]]
 }
@@ -46,7 +47,7 @@ local_s_client() {
   initialize_redis
   start_redis
   run-database.sh --client "$REDIS_DATABASE_URL" SET test_key test_value
-  run run-database.sh --client "$SSL_DATABASE_URL" GET test_key
+  run run-database.sh --client "$SSL_DATABASE_URL" "${CLIENT_OPTS[@]}" GET test_key
   [ "$status" -eq "0" ]
   [[ "$output" =~ "test_value" ]]
 }
@@ -59,10 +60,8 @@ local_s_client() {
 }
 
 backup_restore_test() {
-  local url="$1"
-
-  run-database.sh --client "$url" SET test_key test_value
-  run-database.sh --dump "$url" > redis.dump
+  run-database.sh --client "$@" SET test_key test_value
+  run-database.sh --dump "$@" > redis.dump
   stop_redis
 
   # Drop ALL the data!!!
@@ -72,20 +71,24 @@ backup_restore_test() {
   # Restart. Data should be gone.
   initialize_redis
   start_redis
-  run run-database.sh --client "$url" GET test_key
+  run run-database.sh --client "$@" GET test_key
   [ "$status" -eq "0" ]
   [[ "$output" = "" ]] || \
     [[ "$output" = "Warning: Using a password with '-a' option on the command line interface may not be safe." ]] || \
     [[ "$output" = "Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe." ]]
 
   # Restore. Data should be back.
-  run-database.sh --restore "$url" < redis.dump
-  run run-database.sh --client "$url" GET test_key
+  run-database.sh --restore "$@" < redis.dump
+  run run-database.sh --client "$@" GET test_key
   [ "$status" -eq "0" ]
   [[ "$output" =~ "test_value" ]]
 }
 
 @test "It should backup and restore over the Redis protocol" {
+  if [[ "$(echo "$REDIS_VERSION" | cut -f1 -d.)" -ge 7 ]]; then
+    skip "Redis 7+ RDB files not supported"
+  fi
+
   # Load a key
   initialize_redis
   start_redis
@@ -93,10 +96,14 @@ backup_restore_test() {
 }
 
 @test "It should backup and restore over SSL" {
+  if [[ "$(echo "$REDIS_VERSION" | cut -f1 -d.)" -ge 7 ]]; then
+    skip "Redis 7+ RDB files not supported"
+  fi
+
   # Load a key
   initialize_redis
   start_redis
-  backup_restore_test "$SSL_DATABASE_URL"
+  backup_restore_test "$SSL_DATABASE_URL" "${CLIENT_OPTS[@]}"
 }
 
 export_exposed_ports() {
@@ -137,67 +144,7 @@ export_exposed_ports() {
   popd
 
   [[ "$SSL_DATABASE_URL_FULL" = "$URL" ]]
-  run-database.sh --client "$URL" INFO
-}
-
-@test "stunnel allows TLS1.2" {
-  initialize_redis
-  start_redis
-  run local_s_client "$SSL_PORT" -tls1_2
-  [ "$status" -eq 0 ]
-}
-
-@test "stunnel allows TLS1.1" {
-  initialize_redis
-  start_redis
-  run local_s_client "$SSL_PORT" -tls1_1
-  [ "$status" -eq 0 ]
-}
-
-@test "stunnel allows TLS1.0" {
-  initialize_redis
-  start_redis
-  run local_s_client "$SSL_PORT" -tls1
-  [ "$status" -eq 0 ]
-}
-
-@test "stunnel disallows SSLv3" {
-  initialize_redis
-  start_redis
-  run local_s_client "$SSL_PORT" -ssl3
-  [ "$status" -ne 0 ]
-}
-
-
-@test "It should stop supervisor when Redis dies" {
-  initialize_redis
-  start_redis
-
-  SUPERVISOR_PID="$(pidof supervisord)"
-
-  # If we don't sleep here, the supervisor process state
-  # ends up being BACKOFF, and Redis restarts instead of
-  # exiting (which is what we monitor for).
-  # Multiple BACKOFFs eventually cause supervisor
-  # to stop, so we don't care about acting on those.
-  # By sleeping, we avoid restarting too quickly, avoiding
-  # the BACKOFF status.
-  sleep 10
-
-  PID="$(pidof redis-server)"
-  pkill -TERM redis-server
-  while [ -n "$PID" ] && [ -e "/proc/${PID}" ]; do sleep 0.1; done
-
-  # Supervisor takes a few seconds to stop
-  for _ in $(seq 1 30); do
-    if [ ! -e "/proc/${SUPERVISOR_PID}" ]; then
-      break
-    fi
-    sleep 1
-  done
-
-  run pidof supervisord
-  [ "$status" -eq 1 ]
+  run-database.sh --client "$URL" "${CLIENT_OPTS[@]}" INFO
 }
 
 @test "It prints the persistent configuration changes on boot." {

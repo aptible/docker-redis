@@ -6,7 +6,7 @@ set -o pipefail
 REDIS_NAME="redis-${REDIS_VERSION}"
 REDIS_ARCHIVE="${REDIS_NAME}.tar.gz"
 REDIS_URL="http://download.redis.io/releases/${REDIS_ARCHIVE}"
-REDIS_BUILD_DEPS=(build-base linux-headers wget)
+REDIS_BUILD_DEPS=(build-base linux-headers wget openssl-dev)
 
 apk-install "${REDIS_BUILD_DEPS[@]}"
 
@@ -29,7 +29,7 @@ if [[ "$REDIS_VERSION" =~ ^2.8.[0-9]+$ ]]; then
 fi
 
 make all PREFIX=/usr/local MALLOC=jemalloc
-make install
+make install BUILD_TLS=yes
 
 popd
 popd

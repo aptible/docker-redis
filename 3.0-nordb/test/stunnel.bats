@@ -1,0 +1,1 @@
+../../test/shared/stunnel.bats

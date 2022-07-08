@@ -56,7 +56,16 @@ start_redis () {
 }
 
 stop_redis () {
-  PID="$(pidof supervisord)" || return 0
+  if [[ -n "$INTEGRATED_TLS" ]]; then
+    PID="$(pidof redis-server)" || return 0
+  else
+    PID="$(pidof supervisord)" || return 0
+  fi
+
   kill -TERM "$PID"
   while [ -n "$PID" ] && [ -e "/proc/${PID}" ]; do sleep 0.1; done
+}
+
+local_s_client() {
+  echo OK | openssl s_client -connect localhost:"$@"
 }

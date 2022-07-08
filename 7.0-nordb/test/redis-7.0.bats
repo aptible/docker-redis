@@ -1,0 +1,1 @@
+../../test/shared/redis-7.0.bats
