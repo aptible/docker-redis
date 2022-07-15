@@ -5,7 +5,7 @@ RUN addgroup "$REDIS_USER"
 RUN adduser -S "$REDIS_USER" -G "$REDIS_USER"
 
 <% if ENV.fetch('REDIS_VERSION').to_f >= 6.0 %>
-ENV INTEGRATED_TLS=true
+ENV VERSION_GTE_6=true
 RUN apk-install ca-certificates sudo
 <% else %>
 RUN apk-install supervisor ca-certificates

@@ -5,7 +5,7 @@ parse_url()
   # cf http://stackoverflow.com/a/17287984
   protocol="$(echo "$1" | grep :// | sed -e's,^\(.*://\).*,\1,g')"
   # remove the protocol
-  url=$(echo $1 | sed -e s,$protocol,,g)
+  local url=$(echo $1 | sed -e s,$protocol,,g)
   # extract the user and password (if any)
   user_and_password="$(echo $url | grep @ | cut -d@ -f1)"
   password="$(echo $user_and_password | grep : | cut -d: -f2)"

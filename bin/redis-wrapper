@@ -17,4 +17,5 @@ exec redis-server \
   "$config_file" \
   --port "$REDIS_PORT" \
   --dir "$DATA_DIRECTORY" \
-  $(cat "$ARGUMENT_FILE")
+  $(cat "$ARGUMENT_FILE") \
+  $(cat "$RUNTIME_ARGUMENT_FILE")
