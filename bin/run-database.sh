@@ -243,8 +243,8 @@ elif [[ "$1" == "--initialize-from" ]]; then
   shift
 
   # Always prefer connecting over SSL if that URL was provided.
-  for source_url in "$@"; do
-    parse_url "$source_url"
+  for url in "$@"; do
+    parse_url "$url"
     if [[ "$protocol" = "rediss://" ]]; then
       break
     fi
@@ -293,8 +293,8 @@ elif [[ "$1" == "--initialize-from" ]]; then
       REPL_PASS="${REPLICATION_PASSPHRASE:-"$(pwgen -s 32)"}"
 
       # Replica permissions https://redis.io/docs/manual/security/acl/#acl-rules-for-sentinel-and-replicas
-      start_redis_cli "$source_url" ACL SETUSER "$REPL_USER" on ">${REPL_PASS}" +psync +replconf +ping
-      start_redis_cli "$source_url" ACL SAVE
+      start_redis_cli "$url" ACL SETUSER "$REPL_USER" on ">${REPL_PASS}" +psync +replconf +ping
+      start_redis_cli "$url" ACL SAVE
 
       echo "--masteruser ${REPL_USER}" >> "$ARGUMENT_FILE"
       echo "--masterauth ${REPL_PASS}" >> "$ARGUMENT_FILE"
