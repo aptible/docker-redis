@@ -2,9 +2,8 @@
 
 source '/tmp/test/test_helper.sh'
 
-CLIENT_OPTS=()
-if [ -n "$INTEGRATED_TLS" ]; then
-  CLIENT_OPTS=(--cacert "${TEST_ROOT}/ssl/ca.pem")
+if [ -n "$VERSION_GTE_6" ]; then
+  export CA_CERTIFICATE="$(cat "${TEST_ROOT}/ssl/ca.pem")"
 fi
 
 setup() {
@@ -37,8 +36,8 @@ teardown() {
 @test "It should support SSL connections" {
   initialize_redis
   start_redis
-  run-database.sh --client "$SSL_DATABASE_URL" "${CLIENT_OPTS[@]}" SET test_key test_value
-  run run-database.sh --client "$SSL_DATABASE_URL_FULL" "${CLIENT_OPTS[@]}" GET test_key
+  run-database.sh --client "$SSL_DATABASE_URL" SET test_key test_value
+  run run-database.sh --client "$SSL_DATABASE_URL_FULL" GET test_key
   [ "$status" -eq "0" ]
   [[ "$output" =~ "test_value" ]]
 }
@@ -47,7 +46,7 @@ teardown() {
   initialize_redis
   start_redis
   run-database.sh --client "$REDIS_DATABASE_URL" SET test_key test_value
-  run run-database.sh --client "$SSL_DATABASE_URL" "${CLIENT_OPTS[@]}" GET test_key
+  run run-database.sh --client "$SSL_DATABASE_URL" GET test_key
   [ "$status" -eq "0" ]
   [[ "$output" =~ "test_value" ]]
 }
@@ -103,7 +102,7 @@ backup_restore_test() {
   # Load a key
   initialize_redis
   start_redis
-  backup_restore_test "$SSL_DATABASE_URL" "${CLIENT_OPTS[@]}"
+  backup_restore_test "$SSL_DATABASE_URL"
 }
 
 export_exposed_ports() {
@@ -144,7 +143,7 @@ export_exposed_ports() {
   popd
 
   [[ "$SSL_DATABASE_URL_FULL" = "$URL" ]]
-  run-database.sh --client "$URL" "${CLIENT_OPTS[@]}" INFO
+  run-database.sh --client "$URL" INFO
 }
 
 @test "It prints the persistent configuration changes on boot." {

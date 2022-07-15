@@ -18,6 +18,10 @@ do_setup() {
     exit 1
   fi
 
+  if [[ -n "$VERSION_GTE_6" ]]; then
+    export USERNAME='testuser'
+  fi
+
   # Load our test CA as a trusted CA.
   cp "${TEST_ROOT}/ssl/ca.pem" "$SSL_CERTS_DIRECTORY"
   c_rehash "$SSL_CERTS_DIRECTORY"
@@ -28,11 +32,11 @@ do_setup() {
 
   export DATABASE_PASSWORD="password12345"
 
-  export REDIS_DATABASE_URL="redis://:$DATABASE_PASSWORD@localhost"
-  export REDIS_DATABASE_URL_FULL="redis://:$DATABASE_PASSWORD@localhost:${REDIS_PORT}"
+  export REDIS_DATABASE_URL="redis://${USERNAME:-}:${DATABASE_PASSWORD}@localhost"
+  export REDIS_DATABASE_URL_FULL="redis://${USERNAME:-}:${DATABASE_PASSWORD}@localhost:${REDIS_PORT}"
 
-  export SSL_DATABASE_URL="rediss://:$DATABASE_PASSWORD@localhost"
-  export SSL_DATABASE_URL_FULL="rediss://:$DATABASE_PASSWORD@localhost:${SSL_PORT}"
+  export SSL_DATABASE_URL="rediss://${USERNAME:-}:${DATABASE_PASSWORD}@localhost"
+  export SSL_DATABASE_URL_FULL="rediss://${USERNAME:-}:${DATABASE_PASSWORD}@localhost:${SSL_PORT}"
 
   rm -rf "$DATA_DIRECTORY"
   mkdir -p "$DATA_DIRECTORY"
@@ -47,7 +51,7 @@ do_teardown() {
 }
 
 initialize_redis () {
-  PASSPHRASE="$DATABASE_PASSWORD" run-database.sh --initialize
+  USERNAME="$USERNAME" PASSPHRASE="$DATABASE_PASSWORD" run-database.sh --initialize
 }
 
 start_redis () {
@@ -56,7 +60,7 @@ start_redis () {
 }
 
 stop_redis () {
-  if [[ -n "$INTEGRATED_TLS" ]]; then
+  if [[ -n "$VERSION_GTE_6" ]]; then
     PID="$(pidof redis-server)" || return 0
   else
     PID="$(pidof supervisord)" || return 0
