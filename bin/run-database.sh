@@ -184,7 +184,7 @@ EOF
   # Finally, we force-chown the data directory and its contents. There won't be many
   # files there so this isn't expensive, and it's needed because we used to run Redis
   # as root but no longer do.
-  chown -R "${REDIS_USER}:${REDIS_USER}" "$DATA_DIRECTORY" "$RUNTIME_ARGUMENT_FILE"
+  chown -R "${REDIS_USER}:${REDIS_USER}" "$DATA_DIRECTORY"
 
   touch "$ARGUMENT_FILE" # don't crash and burn if initialize wasn't called.
 
@@ -199,8 +199,10 @@ EOF
     echo "--tls-key-file ${TLS_KEY_FILE}" >> "$RUNTIME_ARGUMENT_FILE"
     echo "--tls-auth-clients no" >> "$RUNTIME_ARGUMENT_FILE"
 
+    chown "${REDIS_USER}:${REDIS_USER}" "$RUNTIME_ARGUMENT_FILE"
     exec sudo -E -u "$REDIS_USER" redis-wrapper
   else
+    chown "${REDIS_USER}:${REDIS_USER}" "$RUNTIME_ARGUMENT_FILE"
     exec supervisord -c "/etc/supervisord.conf"
   fi
 }
