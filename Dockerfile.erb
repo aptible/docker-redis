@@ -7,6 +7,9 @@ RUN adduser -S "$REDIS_USER" -G "$REDIS_USER"
 <% if ENV.fetch('REDIS_VERSION').to_f >= 6.0 %>
 ENV VERSION_GTE_6=true
 RUN apk-install ca-certificates sudo
+<% if ENV.fetch('REDIS_VERSION').to_f >= 6.2 %>
+ENV VERSION_GTE_6_2=true
+<% end %>
 <% else %>
 RUN apk-install supervisor ca-certificates
 
