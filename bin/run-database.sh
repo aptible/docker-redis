@@ -210,8 +210,8 @@ EOF
 create_user() {
   # Create an ACL file to store users in and create the initial user
   mkdir -p "$ACL_DIRECTORY"
-  echo "user ${USERNAME} on >${PASSPHRASE} ~* +@all" > "$ACL_FILE"
-  echo "user default on >${PASSPHRASE} ~* +@all" >> "$ACL_FILE"
+  echo "user ${USERNAME} on >${PASSPHRASE} ~* &* +@all" > "$ACL_FILE"
+  echo "user default on >${PASSPHRASE} ~* &* +@all" >> "$ACL_FILE"
   echo "--aclfile ${ACL_FILE}" >> "$ARGUMENT_FILE"
   # The aclfile must be in a directory owned by the $REDIS_USER in order for
   # ACL SAVE to work as this command creates a temporary file in the same directory
