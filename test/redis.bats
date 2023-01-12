@@ -30,7 +30,7 @@ teardown() {
 @test "It should require authentication" {
   initialize_redis
   start_redis
-  run-database.sh --client "redis://localhost:${REDIS_PORT}/db" INFO 2>&1 | grep NOAUTH
+  run-database.sh --client "redis://localhost:${REDIS_PORT}/db" INFO 2>&1 | egrep "NOAUTH|WRONGPASS"
 }
 
 @test "It should support SSL connections" {
